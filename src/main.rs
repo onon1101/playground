@@ -2,6 +2,8 @@
 
 use std::env;
 use dotenvy::dotenv;
+use rocket_okapi::{openapi, openapi_get_routes};
+use rocket_okapi::swagger_ui::{make_swagger_ui, SwaggerUIConfig};
 use sqlx::PgPool;
 
 async fn init_db() -> PgPool{
@@ -10,10 +12,13 @@ async fn init_db() -> PgPool{
     PgPool::connect(&database_url).await.expect("Failed to connect to database")
 }
 
+#[openapi]
 #[get("/hello")]
-fn hello<'a>() -> &'a str {
+fn hello() -> &'static str {
     "test"
 }
+
+#[openapi]
 #[get("/")]
 fn index() -> &'static str {
     "Hello, world!"
@@ -24,6 +29,9 @@ async fn rocket() -> _ {
     let db_pool = init_db().await;
     rocket::build()
         .manage(db_pool)
-        .mount("/", routes![index])
-
+        .mount("/", openapi_get_routes![hello, index])
+        .mount("/swagger", make_swagger_ui(&SwaggerUIConfig {
+            url: "/openapi.json".to_string(),
+            ..Default::default()
+        }))
 }
